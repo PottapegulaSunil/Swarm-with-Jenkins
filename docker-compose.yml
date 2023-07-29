@@ -4,7 +4,7 @@ services:
   web:
     image: sunil2580/student-rest:latest
     ports:
-      - "8080:8080"
+      - "8081:8080"
     deploy:
       replicas: 3
 
