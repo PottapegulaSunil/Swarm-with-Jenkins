@@ -1,0 +1,63 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Assuming you are using Git for version control
+                git 'https://github.com/PottapegulaSunil/Swarm-with-Jenkins.git'
+            }
+        }
+
+        stage('Build with Maven') {
+            steps {
+                // Build your Maven project here
+                sh 'mvn clean install' 
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                // Build your Docker image here, assuming your Dockerfile is in the root directory of your project
+                script {
+                    sh 'docker build -t sunil2580/student-rest:latest .'
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    
+                    withCredentials([string(credentialsId: 'DockerHub-Pwd', variable: 'DockerHubPwd')]) {
+                    sh 'docker login -u sunil2580 -p ${DockerHubPwd}'
+                    
+                    sh 'docker push sunil2580/student-rest'
+}
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Docker Swarm') {
+            environment {
+                DOCKER_STACK_NAME = 'student-rest-stack'
+            }
+            steps {
+                // Check if Docker Swarm is already initialized
+                script {
+                    def swarmStatus = sh(returnStatus: true, script: 'docker info --format "{{.Swarm.LocalNodeState}}"').trim()
+                    if (swarmStatus != "active") {
+                        sh 'docker swarm init' // Initialize Swarm if not already initialized
+                    }
+                }
+
+                // Deploy the Docker service to the Swarm cluster using the local Docker Swarm image
+                script {
+                    sh "docker stack deploy -c docker-compose.yml --with-registry-auth $DOCKER_STACK_NAME"
+                }
+            }
+        }
+    }
+}
+
